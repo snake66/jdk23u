@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,6 @@
 class DefNewGeneration;
 class GCMemoryManager;
 class GenerationSpec;
-class CompactibleSpace;
 class ContiguousSpace;
 class CompactPoint;
 class OopClosure;
@@ -86,10 +85,6 @@ class Generation: public CHeapObj<mtGC> {
   // Memory area reserved for generation
   VirtualSpace _virtual_space;
 
-  // ("Weak") Reference processing support
-  SpanSubjectToDiscoveryClosure _span_based_discoverer;
-  ReferenceProcessor* _ref_processor;
-
   // Performance Counters
   CollectorCounters* _gc_counters;
 
@@ -116,12 +111,6 @@ class Generation: public CHeapObj<mtGC> {
     GenGrain = 1 << LogOfGenGrain
   };
 
-  // allocate and initialize ("weak") refs processing support
-  void ref_processor_init();
-  void set_ref_processor(ReferenceProcessor* rp) {
-    assert(_ref_processor == NULL, "clobbering existing _ref_processor");
-    _ref_processor = rp;
-  }
 
   virtual Generation::Name kind() { return Generation::Other; }
 
@@ -152,12 +141,6 @@ class Generation: public CHeapObj<mtGC> {
   // Promotion of the full amount is not guaranteed but
   // might be attempted in the worst case.
   virtual bool promotion_attempt_is_safe(size_t max_promotion_in_bytes) const;
-
-  // For a non-young generation, this interface can be used to inform a
-  // generation that a promotion attempt into that generation failed.
-  // Typically used to enable diagnostic output for post-mortem analysis,
-  // but other uses of the interface are not ruled out.
-  virtual void promotion_failure_occurred() { /* does nothing */ }
 
   // Return an estimate of the maximum allocation that could be performed
   // in the generation without triggering any collection or expansion
@@ -193,16 +176,12 @@ class Generation: public CHeapObj<mtGC> {
     return _reserved.contains(p);
   }
 
-  // If some space in the generation contains the given "addr", return a
-  // pointer to that space, else return "NULL".
-  virtual Space* space_containing(const void* addr) const;
-
   // Iteration - do not use for time critical operations
   virtual void space_iterate(SpaceClosure* blk, bool usedOnly = false) = 0;
 
   // Returns the first space, if any, in the generation that can participate
-  // in compaction, or else "NULL".
-  virtual CompactibleSpace* first_compaction_space() const = 0;
+  // in compaction, or else "null".
+  virtual ContiguousSpace* first_compaction_space() const = 0;
 
   // Returns "true" iff this generation should be used to allocate an
   // object of the given size.  Young generations might
@@ -218,7 +197,7 @@ class Generation: public CHeapObj<mtGC> {
     return result;
   }
 
-  // Allocate and returns a block of the requested size, or returns "NULL".
+  // Allocate and returns a block of the requested size, or returns "null".
   // Assumes the caller has done any necessary locking.
   virtual HeapWord* allocate(size_t word_size, bool is_tlab) = 0;
 
@@ -242,7 +221,7 @@ class Generation: public CHeapObj<mtGC> {
 
   // "obj" is the address of an object in a younger generation.  Allocate space
   // for "obj" in the current (or some higher) generation, and copy "obj" into
-  // the newly allocated space, if possible, returning the result (or NULL if
+  // the newly allocated space, if possible, returning the result (or null if
   // the allocation failed).
   //
   // The "obj_size" argument is just obj->size(), passed along so the caller can
@@ -288,7 +267,7 @@ class Generation: public CHeapObj<mtGC> {
   // space to support an allocation of the given "word_size".  If
   // successful, perform the allocation and return the resulting
   // "oop" (initializing the allocated block). If the allocation is
-  // still unsuccessful, return "NULL".
+  // still unsuccessful, return "null".
   virtual HeapWord* expand_and_allocate(size_t word_size, bool is_tlab) = 0;
 
   // Some generations may require some cleanup or preparation actions before
@@ -301,10 +280,6 @@ class Generation: public CHeapObj<mtGC> {
 
   // Save the high water marks for the used space in a generation.
   virtual void record_spaces_top() {}
-
-  // Some generations may need to be "fixed-up" after some allocation
-  // activity to make them parsable again. The default is to do nothing.
-  virtual void ensure_parsability() {}
 
   // Generations may keep statistics about collection. This method
   // updates those statistics. current_generation is the generation
@@ -322,7 +297,6 @@ class Generation: public CHeapObj<mtGC> {
   virtual void adjust_pointers();
   // Mark sweep support phase4
   virtual void compact();
-  virtual void post_compact() { ShouldNotReachHere(); }
 #endif
 
   // Accessing "marks".
@@ -333,29 +307,9 @@ class Generation: public CHeapObj<mtGC> {
   // operations to be optimized.
   virtual void save_marks() {}
 
-  // This function allows generations to initialize any "saved marks".  That
-  // is, should only be called when the generation is empty.
-  virtual void reset_saved_marks() {}
-
   // This function is "true" iff any no allocations have occurred in the
   // generation since the last call to "save_marks".
   virtual bool no_allocs_since_save_marks() = 0;
-
-  // The "requestor" generation is performing some garbage collection
-  // action for which it would be useful to have scratch space.  If
-  // the target is not the requestor, no gc actions will be required
-  // of the target.  The requestor promises to allocate no more than
-  // "max_alloc_words" in the target generation (via promotion say,
-  // if the requestor is a young generation and the target is older).
-  // If the target generation can provide any scratch space, it adds
-  // it to "list", leaving "list" pointing to the head of the
-  // augmented list.  The default is to offer no space.
-  virtual void contribute_scratch(ScratchBlock*& list, Generation* requestor,
-                                  size_t max_alloc_words) {}
-
-  // Give each generation an opportunity to do clean up for any
-  // contributed scratch.
-  virtual void reset_scratch() {}
 
   // When an older generation has been collected, and perhaps resized,
   // this method will be invoked on all younger generations (from older to
@@ -366,22 +320,11 @@ class Generation: public CHeapObj<mtGC> {
   virtual const char* name() const = 0;
   virtual const char* short_name() const = 0;
 
-  // Reference Processing accessor
-  ReferenceProcessor* const ref_processor() { return _ref_processor; }
-
   // Iteration.
-
-  // Iterate over all the ref-containing fields of all objects in the
-  // generation, calling "cl.do_oop" on each.
-  virtual void oop_iterate(OopIterateClosure* cl);
 
   // Iterate over all objects in the generation, calling "cl.do_object" on
   // each.
   virtual void object_iterate(ObjectClosure* cl);
-
-  // Inform a generation that some of its objects have moved.  [e.g. The
-  // generation's spaces were compacted, invalidating the card table.]
-  virtual void invalidate_remembered_set() { }
 
   // Block abstraction.
 
@@ -424,7 +367,7 @@ public:
   virtual CollectorCounters* counters() { return _gc_counters; }
 
   GCMemoryManager* gc_manager() const {
-    assert(_gc_manager != NULL, "not initialized yet");
+    assert(_gc_manager != nullptr, "not initialized yet");
     return _gc_manager;
   }
 

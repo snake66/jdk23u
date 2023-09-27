@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,6 @@ import java.nio.charset.Charset;
 
 /**
  * Service provider interface for JdkConsole implementations.
- * The provider used for instantiating JdkConsole instance can be
- * specified with the system property "jdk.console", whose value
- * designates the module name of the implementation, and which defaults
- * to "jdk.internal.le" (jline). If no providers is available,
- * or instantiation failed, java.base built-in Console implementation
- * is used.
  */
 public interface JdkConsoleProvider {
     /**
