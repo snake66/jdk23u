@@ -332,7 +332,8 @@ void os::print_tos_pc(outputStream *st, const void* ucVoid) {
   st->cr();
 }
 
-void os::print_register_info(outputStream *st, const void* ucVoid) {
+
+void os::print_register_info(outputStream *st, const void *context, int& continuation) {
   st->print_cr("No register info.");
 }
 
