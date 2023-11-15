@@ -2462,28 +2462,13 @@ static void current_stack_region(address * bottom, size_t * size) {
   assert(os::current_stack_pointer() >= *bottom &&
          os::current_stack_pointer() < *bottom + *size, "just checking");
 }
+#endif // ZERO
 
 #ifdef __OpenBSD__
 bool os::is_primordial_thread() {
   return (pthread_main_np() == 1);
 }
 #endif
-
-address os::current_stack_base() {
-  address bottom;
-  size_t size;
-  current_stack_region(&bottom, &size);
-  return (bottom + size);
-}
-
-size_t os::current_stack_size() {
-  // stack size includes normal stack and HotSpot guard pages
-  address bottom;
-  size_t size;
-  current_stack_region(&bottom, &size);
-  return size;
-}
-#endif // ZERO
 
 static inline struct timespec get_mtime(const char* filename) {
   struct stat st;
