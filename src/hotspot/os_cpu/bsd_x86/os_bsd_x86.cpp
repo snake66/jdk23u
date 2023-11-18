@@ -282,9 +282,17 @@
 # endif
 #endif
 
+#ifdef AMD64
 address os::current_stack_pointer() {
   return (address)__builtin_frame_address(0);
 }
+#else
+address os::current_stack_pointer() __attribute__ ((optnone)) {
+  intptr_t* esp;
+  __asm__ __volatile__ ("mov %%" SPELL_REG_SP ", %0":"=r"(esp):);
+  return (address) esp;
+}
+#endif
 
 char* os::non_memory_address_word() {
   // Must never look like an address returned by reserve_memory,
@@ -957,7 +965,7 @@ void os::print_register_info(outputStream *st, const void *context, int& continu
 
 void os::setup_fpu() {
 #ifndef AMD64
-  address fpu_cntrl = StubRoutines::addr_fpu_cntrl_wrd_std();
+  address fpu_cntrl = StubRoutines::x86::addr_fpu_cntrl_wrd_std();
   __asm__ volatile (  "fldcw (%0)" :
                       : "r" (fpu_cntrl) : "memory");
 #endif // !AMD64

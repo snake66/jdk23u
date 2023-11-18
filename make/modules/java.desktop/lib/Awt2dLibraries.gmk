@@ -248,6 +248,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         DISABLED_WARNINGS_clang_gtk3_interface.c := parentheses, \
         DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
         DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
+        DISABLED_WARNINGS_clang_screencast_pipewire.c := format-nonliteral, \
         DISABLED_WARNINGS_clang_sun_awt_X11_GtkFileDialogPeer.c := parentheses, \
         DISABLED_WARNINGS_gcc := int-to-pointer-cast, \
         DISABLED_WARNINGS_gcc_awt_Taskbar.c := parentheses, \
@@ -722,6 +723,8 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
 
   ifeq ($(USE_EXTERNAL_LIBPNG), false)
     LIBSPLASHSCREEN_HEADER_DIRS += libsplashscreen/libpng
+    LIBSPLASHSCREEN_CFLAGS += -DPNG_NO_MMX_CODE -DPNG_ARM_NEON_OPT=0 \
+                              -DPNG_ARM_NEON_IMPLEMENTATION=0
   else
     LIBSPLASHSCREEN_EXCLUDES += libpng
   endif
@@ -735,8 +738,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
     LIBSPLASHSCREEN_EXCLUDE_SRC_PATTERNS := /unix/
   endif
 
-  LIBSPLASHSCREEN_CFLAGS += -DSPLASHSCREEN -DPNG_NO_MMX_CODE \
-                            -DPNG_ARM_NEON_OPT=0 -DPNG_ARM_NEON_IMPLEMENTATION=0
+  LIBSPLASHSCREEN_CFLAGS += -DSPLASHSCREEN
 
   ifeq ($(call isTargetOs, linux), true)
     ifeq ($(call isTargetCpuArch, ppc), true)

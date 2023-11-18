@@ -152,7 +152,7 @@ julong os::Bsd::_physical_memory = 0;
 mach_timebase_info_data_t os::Bsd::_timebase_info = {0, 0};
 volatile uint64_t         os::Bsd::_max_abstime   = 0;
 #else
-int (*os::Bsd::_getcpuclockid)(pthread_t, clockid_t *) = NULL;
+int (*os::Bsd::_getcpuclockid)(pthread_t, clockid_t *) = nullptr;
 #endif
 pthread_t os::Bsd::_main_thread;
 
@@ -200,7 +200,7 @@ julong os::Bsd::available_memory() {
 
   for (i = 0, free_pages = 0; i < sizeof(vm_stats) / sizeof(vm_stats[0]); i++) {
     size = sizeof(npages);
-    if (sysctlbyname(vm_stats[i], &npages, &size, NULL, 0) == -1) {
+    if (sysctlbyname(vm_stats[i], &npages, &size, nullptr, 0) == -1) {
       free_pages = 0;
       break;
     }
@@ -403,7 +403,7 @@ void os::init_system_properties_values() {
     // Found the full path to libjvm.so.
     // Now cut the path to <java_home>/jre if we can.
     pslash = strrchr(buf, '/');
-    if (pslash != NULL) {
+    if (pslash != nullptr) {
       *pslash = '\0';            // Get rid of /libjvm.so.
     }
     pslash = strrchr(buf, '/');
@@ -415,11 +415,7 @@ void os::init_system_properties_values() {
     if (pslash != nullptr) {
       pslash = strrchr(buf, '/');
       if (pslash != nullptr) {
-        *pslash = '\0';          // Get rid of /<arch>.
-        pslash = strrchr(buf, '/');
-        if (pslash != nullptr) {
-          *pslash = '\0';        // Get rid of /lib.
-        }
+        *pslash = '\0';          // Get rid of /lib
       }
     }
     Arguments::set_java_home(buf);
@@ -684,7 +680,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
     log_warning(os, thread)("The %sthread stack size specified is invalid: " SIZE_FORMAT "k",
                             (thr_type == compiler_thread) ? "compiler " : ((thr_type == java_thread) ? "" : "VM "),
                             stack_size / K);
-    thread->set_osthread(NULL);
+    thread->set_osthread(nullptr);
     delete osthread;
     return false;
   }
@@ -1120,7 +1116,7 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 
   Elf32_Ehdr elf_head;
 
-  const char* const error_report = ::dlerror();
+  const char* error_report = ::dlerror();
   if (error_report == nullptr) {
     error_report = "dlerror returned no error description";
   }
@@ -1345,25 +1341,25 @@ typedef Elf32_Phdr	Elf_Phdr;
 #endif
 
 static int dl_iterate_callback(struct dl_phdr_info *info, size_t size, void *data) {
-  if ((info->dlpi_name == NULL) || (*info->dlpi_name == '\0')) {
+  if ((info->dlpi_name == nullptr) || (*info->dlpi_name == '\0')) {
     return 0;
   }
 
   struct loaded_modules_info_param *callback_param = reinterpret_cast<struct loaded_modules_info_param *>(data);
-  address base = NULL;
-  address top = NULL;
+  address base = nullptr;
+  address top = nullptr;
   for (int idx = 0; idx < info->dlpi_phnum; idx++) {
     const Elf_Phdr *phdr = info->dlpi_phdr + idx;
     if (phdr->p_type == PT_LOAD) {
       address raw_phdr_base = reinterpret_cast<address>(info->dlpi_addr + phdr->p_vaddr);
 
       address phdr_base = align_down(raw_phdr_base, phdr->p_align);
-      if ((base == NULL) || (base > phdr_base)) {
+      if ((base == nullptr) || (base > phdr_base)) {
         base = phdr_base;
       }
 
       address phdr_top = align_up(raw_phdr_base + phdr->p_memsz, phdr->p_align);
-      if ((top == NULL) || (top < phdr_top)) {
+      if ((top == nullptr) || (top < phdr_top)) {
         top = phdr_top;
       }
     }
@@ -1519,7 +1515,7 @@ void os::pd_print_cpu_info(outputStream* st, char* buf, size_t buflen) {
 #else
   size_t size = buflen;
   int mib[] = { CTL_HW, HW_MODEL };
-  if (sysctl(mib, 2, buf, &size, NULL, 0) == 0) {
+  if (sysctl(mib, 2, buf, &size, nullptr, 0) == 0) {
     st->print_cr("CPU Model: %s", buf);
   }
 #endif
@@ -1581,7 +1577,7 @@ static void get_swap_info(int *total_pages, int *used_pages) {
     for (n = 0; ; n++) {
       mib[mibsize] = n;
       size = sizeof(xsw);
-      if (sysctl(mib, mibsize + 1, &xsw, &size, NULL, 0) == -1)
+      if (sysctl(mib, mibsize + 1, &xsw, &size, nullptr, 0) == -1)
         break;
       total += xsw.xsw_nblks;
       used += xsw.xsw_used;
@@ -1743,13 +1739,6 @@ static void warn_fail_commit_memory(char* addr, size_t size, bool exec,
 //       problem.
 bool os::pd_commit_memory(char* addr, size_t size, bool exec) {
   int prot = exec ? PROT_READ|PROT_WRITE|PROT_EXEC : PROT_READ|PROT_WRITE;
-#if defined(__OpenBSD__)
-  // XXX: Work-around mmap/MAP_FIXED bug temporarily on OpenBSD
-  Events::log(nullptr, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with protection modes %x", p2i(addr), p2i(addr+size), prot);
-  if (::mprotect(addr, size, prot) == 0) {
-    return true;
-  }
-#elif defined(__APPLE__)
   if (exec) {
     // Do not replace MAP_JIT mappings, see JDK-8234930
     if (::mprotect(addr, size, prot) == 0) {
@@ -1834,11 +1823,6 @@ char *os::scan_pages(char *start, char* end, page_info* page_expected, page_info
 
 
 bool os::pd_uncommit_memory(char* addr, size_t size, bool exec) {
-#if defined(__OpenBSD__)
-  // XXX: Work-around mmap/MAP_FIXED bug temporarily on OpenBSD
-  Events::log(nullptr, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with PROT_NONE", p2i(addr), p2i(addr+size));
-  return ::mprotect(addr, size, PROT_NONE) == 0;
-#elif defined(__APPLE__)
   if (exec) {
     if (::madvise(addr, size, MADV_FREE) != 0) {
       return false;
@@ -2317,10 +2301,10 @@ uint os::processor_id() {
 
 void os::set_native_thread_name(const char *name) {
   if (name != nullptr) {
+#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
     // Add a "Java: " prefix to the name
     char buf[MAXTHREADNAMESIZE];
     snprintf(buf, sizeof(buf), "Java: %s", name);
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
     // This is only supported in Snow Leopard and beyond
     pthread_setname_np(buf);
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -2386,114 +2370,11 @@ void os::os_exception_wrapper(java_call_t f, JavaValue* value,
   f(value, method, args, thread);
 }
 
-// Java thread:
-//
-//   Low memory addresses
-//    +------------------------+
-//    |                        |\  Java thread created by VM does not have
-//    |   pthread guard page   | - pthread guard, attached Java thread usually
-//    |                        |/  has 1 pthread guard page.
-// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()
-//    |                        |\
-//    |  HotSpot Guard Pages   | - red, yellow and reserved pages
-//    |                        |/
-//    +------------------------+ StackOverflow::stack_reserved_zone_base()
-//    |                        |\
-//    |      Normal Stack      | -
-//    |                        |/
-// P2 +------------------------+ Thread::stack_base()
-//
-// Non-Java thread:
-//
-//   Low memory addresses
-//    +------------------------+
-//    |                        |\
-//    |   pthread guard page   | - usually 1 page
-//    |                        |/
-// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()
-//    |                        |\
-//    |      Normal Stack      | -
-//    |                        |/
-// P2 +------------------------+ Thread::stack_base()
-//
-// ** P1 (aka bottom) and size ( P2 = P1 - size) are the address and stack size returned from
-//    pthread_attr_getstack()
-#ifndef ZERO
-static void current_stack_region(address * bottom, size_t * size) {
-#ifdef __APPLE__
-  pthread_t self = pthread_self();
-  void *stacktop = pthread_get_stackaddr_np(self);
-  *size = pthread_get_stacksize_np(self);
-  // workaround for OS X 10.9.0 (Mavericks)
-  // pthread_get_stacksize_np returns 128 pages even though the actual size is 2048 pages
-  if (pthread_main_np() == 1) {
-    // At least on Mac OS 10.12 we have observed stack sizes not aligned
-    // to pages boundaries. This can be provoked by e.g. setrlimit() (ulimit -s xxxx in the
-    // shell). Apparently Mac OS actually rounds upwards to next multiple of page size,
-    // however, we round downwards here to be on the safe side.
-    *size = align_down(*size, getpagesize());
-
-    if ((*size) < (DEFAULT_MAIN_THREAD_STACK_PAGES * (size_t)getpagesize())) {
-      char kern_osrelease[256];
-      size_t kern_osrelease_size = sizeof(kern_osrelease);
-      int ret = sysctlbyname("kern.osrelease", kern_osrelease, &kern_osrelease_size, NULL, 0);
-      if (ret == 0) {
-        // get the major number, atoi will ignore the minor amd micro portions of the version string
-        if (atoi(kern_osrelease) >= OS_X_10_9_0_KERNEL_MAJOR_VERSION) {
-          *size = (DEFAULT_MAIN_THREAD_STACK_PAGES*getpagesize());
-        }
-      }
-    }
-  }
-  *bottom = (address) stacktop - *size;
-#elif defined(__OpenBSD__)
-  stack_t ss;
-  int rslt = pthread_stackseg_np(pthread_self(), &ss);
-
-  if (rslt != 0)
-    fatal("pthread_stackseg_np failed with error = %d", rslt);
-
-  *bottom = (address)((char *)ss.ss_sp - ss.ss_size);
-  *size   = ss.ss_size;
-#else
-  pthread_attr_t attr;
-
-  int rslt = pthread_attr_init(&attr);
-
-  // JVM needs to know exact stack location, abort if it fails
-  if (rslt != 0)
-    fatal("pthread_attr_init failed with error = %d", rslt);
-
-  rslt = pthread_attr_get_np(pthread_self(), &attr);
-
-  if (rslt != 0)
-    fatal("pthread_attr_get_np failed with error = %d", rslt);
-
-  if (pthread_attr_getstack(&attr, (void **)bottom, size) != 0) {
-    fatal("Can not locate current stack attributes!");
-  }
-
-  pthread_attr_destroy(&attr);
+#ifdef __OpenBSD__
+bool os::is_primordial_thread() {
+  return (pthread_main_np() == 1);
+}
 #endif
-  assert(os::current_stack_pointer() >= *bottom &&
-         os::current_stack_pointer() < *bottom + *size, "just checking");
-}
-
-address os::current_stack_base() {
-  address bottom;
-  size_t size;
-  current_stack_region(&bottom, &size);
-  return (bottom + size);
-}
-
-size_t os::current_stack_size() {
-  // stack size includes normal stack and HotSpot guard pages
-  address bottom;
-  size_t size;
-  current_stack_region(&bottom, &size);
-  return size;
-}
-#endif // ZERO
 
 static inline struct timespec get_mtime(const char* filename) {
   struct stat st;
@@ -2685,7 +2566,7 @@ jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID|KERN_PROC_SHOW_THREADS, pid, sizeof(struct kinfo_proc), 0 };
   const u_int miblen = sizeof(mib) / sizeof(mib[0]);
 
-  if (sysctl(mib, miblen, NULL, &length, NULL, 0) < 0) {
+  if (sysctl(mib, miblen, nullptr, &length, nullptr, 0) < 0) {
     return -1;
   }
 
@@ -2694,7 +2575,7 @@ jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
 
   mib[5] = num_threads;
 
-  if (sysctl(mib, miblen, ki, &length, NULL, 0) < 0) {
+  if (sysctl(mib, miblen, ki, &length, nullptr, 0) < 0) {
     FREE_C_HEAP_ARRAY(struct kinfo_proc, ki);
     return -1;
   }
@@ -2716,7 +2597,7 @@ jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   FREE_C_HEAP_ARRAY(struct kinfo_proc, ki);
   return -1;
 #else /* !OpenBSD */
-  if (user_sys_cpu_time && Bsd::_getcpuclockid != NULL) {
+  if (user_sys_cpu_time && Bsd::_getcpuclockid != nullptr) {
     struct timespec tp;
     clockid_t clockid;
     int ret;
@@ -2774,7 +2655,7 @@ bool os::is_thread_cpu_time_supported() {
 #if defined(__APPLE__) || defined(__OpenBSD__)
   return true;
 #else
-  return (Bsd::_getcpuclockid != NULL);
+  return (Bsd::_getcpuclockid != nullptr);
 #endif
 }
 
@@ -2811,15 +2692,15 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
 #else
   const char *p = get_current_directory(buffer, bufferSize);
 
-  if (p == NULL) {
-    assert(p != NULL, "failed to get current directory");
+  if (p == nullptr) {
+    assert(p != nullptr, "failed to get current directory");
     return 0;
   }
 
   const char *q = getprogname();
 
-  if (q == NULL) {
-    assert(q != NULL, "failed to get progname");
+  if (q == nullptr) {
+    assert(q != nullptr, "failed to get progname");
     return 0;
   }
 
@@ -2866,7 +2747,7 @@ bool os::start_debugging(char *buf, int buflen) {
 
 void os::print_memory_mappings(char* addr, size_t bytes, outputStream* st) {}
 
-#if INCLUDE_JFR
+#ifdef INCLUDE_JFR
 
 void os::jfr_report_memory_info() {
 #ifdef __APPLE__
@@ -2880,6 +2761,16 @@ void os::jfr_report_memory_info() {
     event.set_size(info.resident_size);
     event.set_peak(info.resident_size_max);
     event.commit();
+#else
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage) != 0) {
+    // Send the RSS JFR event
+    EventResidentSetSize event;
+    // FIXME: Determine size, not just peak
+    event.set_size(usage.ru_maxrss * K);
+    event.set_peak(usage.ru_maxrss * K);
+    event.commit();
+#endif // __APPLE__
   } else {
     // Log a warning
     static bool first_warning = true;
@@ -2888,8 +2779,6 @@ void os::jfr_report_memory_info() {
       first_warning = false;
     }
   }
-
-#endif // __APPLE__
 }
 
 #endif // INCLUDE_JFR
