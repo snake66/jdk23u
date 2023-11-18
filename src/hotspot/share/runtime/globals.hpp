@@ -1888,10 +1888,6 @@ const int ObjectAlignmentInBytes = 8;
   product(bool, WhiteBoxAPI, false, DIAGNOSTIC,                             \
           "Enable internal testing APIs")                                   \
                                                                             \
-  product(size_t, ArrayAllocatorMallocLimit, SIZE_MAX, EXPERIMENTAL,        \
-          "Allocation less than this value will be allocated "              \
-          "using malloc. Larger allocations will use mmap.")                \
-                                                                            \
   product(bool, AlwaysAtomicAccesses, false, EXPERIMENTAL,                  \
           "Accesses to all variables should always be atomic")              \
                                                                             \
@@ -1982,11 +1978,11 @@ const int ObjectAlignmentInBytes = 8;
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
                                                                             \
-  product(int, LockingMode, LM_LIGHTWEIGHT,                                 \
+  product(int, LockingMode, LM_LEGACY,                                      \
           "Select locking mode: "                                           \
           "0: monitors only (LM_MONITOR), "                                 \
-          "1: monitors & legacy stack-locking (LM_LEGACY), "                \
-          "2: monitors & new lightweight locking (LM_LIGHTWEIGHT, default)") \
+          "1: monitors & legacy stack-locking (LM_LEGACY, default), "       \
+          "2: monitors & new lightweight locking (LM_LIGHTWEIGHT)")         \
           range(0, 2)                                                       \
                                                                             \
   product(uint, TrimNativeHeapInterval, 0, EXPERIMENTAL,                    \

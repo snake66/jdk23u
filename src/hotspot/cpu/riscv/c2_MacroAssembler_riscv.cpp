@@ -63,7 +63,7 @@ void C2_MacroAssembler::fast_lock(Register objectReg, Register boxReg, Register 
   if (DiagnoseSyncOnValueBasedClasses != 0) {
     load_klass(flag, oop);
     lwu(flag, Address(flag, Klass::access_flags_offset()));
-    test_bit(flag, flag, exact_log2(JVM_ACC_IS_VALUE_BASED_CLASS), tmp /* tmp */);
+    test_bit(flag, flag, exact_log2(JVM_ACC_IS_VALUE_BASED_CLASS));
     bnez(flag, cont, true /* is_far */);
   }
 
@@ -1571,7 +1571,7 @@ void C2_MacroAssembler::minmax_fp(FloatRegister dst, FloatRegister src1, FloatRe
   is_double ? fclass_d(t1, src2)
             : fclass_s(t1, src2);
   orr(t0, t0, t1);
-  andi(t0, t0, 0b1100000000); //if src1 or src2 is quiet or signaling NaN then return NaN
+  andi(t0, t0, fclass_mask::nan); // if src1 or src2 is quiet or signaling NaN then return NaN
   beqz(t0, Compare);
   is_double ? fadd_d(dst, src1, src2)
             : fadd_s(dst, src1, src2);
@@ -1651,6 +1651,106 @@ void C2_MacroAssembler::round_double_mode(FloatRegister dst, FloatRegister src, 
   fmv_d(dst, src);
 
   bind(done);
+}
+
+// According to Java SE specification, for floating-point signum operations, if
+// on input we have NaN or +/-0.0 value we should return it,
+// otherwise return +/- 1.0 using sign of input.
+// one - gives us a floating-point 1.0 (got from matching rule)
+// bool is_double - specifies single or double precision operations will be used.
+void C2_MacroAssembler::signum_fp(FloatRegister dst, FloatRegister one, bool is_double) {
+  Label done;
+
+  is_double ? fclass_d(t0, dst)
+            : fclass_s(t0, dst);
+
+  // check if input is -0, +0, signaling NaN or quiet NaN
+  andi(t0, t0, fclass_mask::zero | fclass_mask::nan);
+
+  bnez(t0, done);
+
+  // use floating-point 1.0 with a sign of input
+  is_double ? fsgnj_d(dst, one, dst)
+            : fsgnj_s(dst, one, dst);
+
+  bind(done);
+}
+
+void C2_MacroAssembler::compress_bits_v(Register dst, Register src, Register mask, bool is_long) {
+  Assembler::SEW sew = is_long ? Assembler::e64 : Assembler::e32;
+  // intrinsic is enabled when MaxVectorSize >= 16
+  Assembler::LMUL lmul = is_long ? Assembler::m4 : Assembler::m2;
+  long len = is_long ? 64 : 32;
+
+  // load the src data(in bits) to be compressed.
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_s_x(v0, src);
+  // reset the src data(in bytes) to zero.
+  mv(t0, len);
+  vsetvli(x0, t0, Assembler::e8, lmul);
+  vmv_v_i(v4, 0);
+  // convert the src data from bits to bytes.
+  vmerge_vim(v4, v4, 1); // v0 as the implicit mask register
+  // reset the dst data(in bytes) to zero.
+  vmv_v_i(v8, 0);
+  // load the mask data(in bits).
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_s_x(v0, mask);
+  // compress the src data(in bytes) to dst(in bytes).
+  vsetvli(x0, t0, Assembler::e8, lmul);
+  vcompress_vm(v8, v4, v0);
+  // convert the dst data from bytes to bits.
+  vmseq_vi(v0, v8, 1);
+  // store result back.
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_x_s(dst, v0);
+}
+
+void C2_MacroAssembler::compress_bits_i_v(Register dst, Register src, Register mask) {
+  compress_bits_v(dst, src, mask, /* is_long */ false);
+}
+
+void C2_MacroAssembler::compress_bits_l_v(Register dst, Register src, Register mask) {
+  compress_bits_v(dst, src, mask, /* is_long */ true);
+}
+
+void C2_MacroAssembler::expand_bits_v(Register dst, Register src, Register mask, bool is_long) {
+  Assembler::SEW sew = is_long ? Assembler::e64 : Assembler::e32;
+  // intrinsic is enabled when MaxVectorSize >= 16
+  Assembler::LMUL lmul = is_long ? Assembler::m4 : Assembler::m2;
+  long len = is_long ? 64 : 32;
+
+  // load the src data(in bits) to be expanded.
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_s_x(v0, src);
+  // reset the src data(in bytes) to zero.
+  mv(t0, len);
+  vsetvli(x0, t0, Assembler::e8, lmul);
+  vmv_v_i(v4, 0);
+  // convert the src data from bits to bytes.
+  vmerge_vim(v4, v4, 1); // v0 as implicit mask register
+  // reset the dst data(in bytes) to zero.
+  vmv_v_i(v12, 0);
+  // load the mask data(in bits).
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_s_x(v0, mask);
+  // expand the src data(in bytes) to dst(in bytes).
+  vsetvli(x0, t0, Assembler::e8, lmul);
+  viota_m(v8, v0);
+  vrgather_vv(v12, v4, v8, VectorMask::v0_t); // v0 as implicit mask register
+  // convert the dst data from bytes to bits.
+  vmseq_vi(v0, v12, 1);
+  // store result back.
+  vsetivli(x0, 1, sew, Assembler::m1);
+  vmv_x_s(dst, v0);
+}
+
+void C2_MacroAssembler::expand_bits_i_v(Register dst, Register src, Register mask) {
+  expand_bits_v(dst, src, mask, /* is_long */ false);
+}
+
+void C2_MacroAssembler::expand_bits_l_v(Register dst, Register src, Register mask) {
+  expand_bits_v(dst, src, mask, /* is_long */ true);
 }
 
 void C2_MacroAssembler::element_compare(Register a1, Register a2, Register result, Register cnt, Register tmp1, Register tmp2,
@@ -2179,13 +2279,13 @@ void C2_MacroAssembler::integer_narrow_v(VectorRegister dst, BasicType dst_bt, i
       }
     }
   } else if (src_bt == T_INT) {
-      // T_SHORT
-      vsetvli(t0, t0, Assembler::e16, Assembler::mf2);
-      vncvt_x_x_w(dst, src);
-      if (dst_bt == T_BYTE) {
-        vsetvli(t0, t0, Assembler::e8, Assembler::mf2);
-        vncvt_x_x_w(dst, dst);
-      }
+    // T_SHORT
+    vsetvli(t0, t0, Assembler::e16, Assembler::mf2);
+    vncvt_x_x_w(dst, src);
+    if (dst_bt == T_BYTE) {
+      vsetvli(t0, t0, Assembler::e8, Assembler::mf2);
+      vncvt_x_x_w(dst, dst);
+    }
   } else if (src_bt == T_SHORT) {
     vsetvli(t0, t0, Assembler::e8, Assembler::mf2);
     vncvt_x_x_w(dst, src);
@@ -2201,8 +2301,6 @@ void C2_MacroAssembler::VFLOATCVT##_safe(VectorRegister dst, VectorRegister src)
 }
 
 VFCVT_SAFE(vfcvt_rtz_x_f_v);
-VFCVT_SAFE(vfwcvt_rtz_x_f_v);
-VFCVT_SAFE(vfncvt_rtz_x_f_w);
 
 #undef VFCVT_SAFE
 
