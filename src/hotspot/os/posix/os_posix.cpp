@@ -644,7 +644,7 @@ static bool is_allocatable(size_t s) {
   // Use raw anonymous mmap here; no need to go through any
   // of our reservation layers. We will unmap right away.
   void* p = ::mmap(nullptr, s, PROT_NONE,
-                   MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS, -1, 0);
+                   MAP_PRIVATE NOT_BSD( | MAP_NORESERVE ) | MAP_ANONYMOUS, -1, 0);
   if (p == MAP_FAILED) {
     return false;
   } else {
