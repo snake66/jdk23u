@@ -92,6 +92,8 @@
 #if defined(__APPLE__)
 # include <sys/types.h>
 # include <sys/sysctl.h>
+# define DEFAULT_MAIN_THREAD_STACK_PAGES 2048
+# define OS_X_10_9_0_KERNEL_MAJOR_VERSION 13
 #endif
 
 #ifdef AMD64
