@@ -118,7 +118,7 @@ class BsdFileStore
         }
         // POSIX attributes not supported on FAT32
         if (type == PosixFileAttributeView.class &&
-            entry().fstype().equals("msdos"))
+            entry().fstype().equals("msdosfs"))
             return false;
         return super.supportsFileAttributeView(type);
     }
@@ -128,7 +128,7 @@ class BsdFileStore
         if (name.equals("user"))
             return supportsFileAttributeView(UserDefinedFileAttributeView.class);
         // UNIX attributes not supported on FAT32
-        if (name.equals("unix") && entry().fstype().equals("msdos"))
+        if (name.equals("unix") && entry().fstype().equals("msdosfs"))
             return false;
         return super.supportsFileAttributeView(name);
     }
