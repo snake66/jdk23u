@@ -1136,8 +1136,6 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
     return result;
   }
 
-  Events::log_dll_message(nullptr, "Loading shared library %s failed, %s", filename, error_report);
-  log_info(os)("shared library load of %s failed, %s", filename, error_report);
   int diag_msg_max_length=ebuflen-strlen(ebuf);
   char* diag_msg_buf=ebuf+strlen(ebuf);
 
