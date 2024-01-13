@@ -532,19 +532,38 @@ static inline void atomic_copy64(const volatile void *src, volatile void *dst) {
 
 extern "C" {
   int SpinPause() {
-    using spin_wait_func_ptr_t = void (*)();
-    spin_wait_func_ptr_t func = CAST_TO_FN_PTR(spin_wait_func_ptr_t, StubRoutines::aarch64::spin_wait());
-    assert(func != nullptr, "StubRoutines::aarch64::spin_wait must not be null.");
-    (*func)();
-    // If StubRoutines::aarch64::spin_wait consists of only a RET,
-    // SpinPause can be considered as implemented. There will be a sequence
-    // of instructions for:
-    // - call of SpinPause
-    // - load of StubRoutines::aarch64::spin_wait stub pointer
-    // - indirect call of the stub
-    // - return from the stub
-    // - return from SpinPause
-    // So '1' always is returned.
+    // We don't use StubRoutines::aarch64::spin_wait stub in order to
+    // avoid a costly call to os::current_thread_enable_wx() on MacOS.
+    // We should return 1 if SpinPause is implemented, and since there
+    // will be a sequence of 11 instructions for NONE and YIELD and 12
+    // instructions for NOP and ISB, SpinPause will always return 1.
+    uint64_t br_dst;
+    const int instructions_per_case = 2;
+    int64_t off = VM_Version::spin_wait_desc().inst() * instructions_per_case * Assembler::instruction_size;
+
+    assert(VM_Version::spin_wait_desc().inst() >= SpinWait::NONE &&
+           VM_Version::spin_wait_desc().inst() <= SpinWait::YIELD, "must be");
+    assert(-1 == SpinWait::NONE,  "must be");
+    assert( 0 == SpinWait::NOP,   "must be");
+    assert( 1 == SpinWait::ISB,   "must be");
+    assert( 2 == SpinWait::YIELD, "must be");
+
+    asm volatile(
+        "  adr  %[d], 20          \n" // 20 == PC here + 5 instructions => address
+                                      // to entry for case SpinWait::NOP
+        "  add  %[d], %[d], %[o]  \n"
+        "  br   %[d]              \n"
+        "  b    SpinPause_return  \n" // case SpinWait::NONE  (-1)
+        "  nop                    \n" // padding
+        "  nop                    \n" // case SpinWait::NOP   ( 0)
+        "  b    SpinPause_return  \n"
+        "  isb                    \n" // case SpinWait::ISB   ( 1)
+        "  b    SpinPause_return  \n"
+        "  yield                  \n" // case SpinWait::YIELD ( 2)
+        "SpinPause_return:        \n"
+        : [d]"=&r"(br_dst)
+        : [o]"r"(off)
+        : "memory");
     return 1;
   }
 
