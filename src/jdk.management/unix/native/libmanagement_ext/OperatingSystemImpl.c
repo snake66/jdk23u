@@ -149,12 +149,6 @@ Java_com_sun_management_internal_OperatingSystemImpl_initialize0
   (JNIEnv *env, jclass cls)
 {
     page_size = sysconf(_SC_PAGESIZE);
-#elif defined(_AIX)
-    perfstat_memory_total_t memory_info;
-    if (perfstat_memory_total(NULL, &memory_info, sizeof(perfstat_memory_total_t), 1) == -1) {
-        throw_internal_error(env, "perfstat_memory_total failed");
-    }
-    return available ? (jlong)(memory_info.pgsp_free * 4L * 1024L) : (jlong)(memory_info.pgsp_total * 4L * 1024L);
 }
 
 // Linux-specific implementation is in UnixOperatingSystem.c
