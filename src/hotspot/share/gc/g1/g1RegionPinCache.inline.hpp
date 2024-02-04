@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,24 +19,42 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-/* @test
-   @bug 4635869
-   @summary Zip files with no extension signature would get rejected
-   */
+#ifndef SHARE_GC_G1_G1REGIONPINCACHE_INLINE_HPP
+#define SHARE_GC_G1_G1REGIONPINCACHE_INLINE_HPP
 
-import java.io.*;
-import java.util.zip.*;
+#include "gc/g1/g1RegionPinCache.hpp"
 
-public class NoExtensionSignature {
+#include "gc/g1/g1CollectedHeap.inline.hpp"
 
-    public static void main(String[] args) throws Exception {
-
-        File f = new File(System.getProperty("test.src", "."), "test.zip");
-        ZipInputStream zis = new ZipInputStream (new FileInputStream(f));
-        ZipEntry entry;
-        while ((entry = zis.getNextEntry()) != null)
-            while (zis.read() != -1 );
-    }
+inline void G1RegionPinCache::inc_count(uint region_idx) {
+  if (region_idx == _region_idx) {
+    ++_count;
+  } else {
+    flush_and_set(region_idx, (size_t)1);
+  }
 }
+
+inline void G1RegionPinCache::dec_count(uint region_idx) {
+  if (region_idx == _region_idx) {
+    --_count;
+  } else {
+    flush_and_set(region_idx, ~(size_t)0);
+  }
+}
+
+inline void G1RegionPinCache::flush_and_set(uint new_region_idx, size_t new_count) {
+  if (_count != 0) {
+    G1CollectedHeap::heap()->region_at(_region_idx)->add_pinned_object_count(_count);
+  }
+  _region_idx = new_region_idx;
+  _count = new_count;
+}
+
+inline void G1RegionPinCache::flush() {
+  flush_and_set(G1_NO_HRM_INDEX, 0);
+}
+
+#endif /* SHARE_GC_G1_G1REGIONPINCACHE_INLINE_HPP */
