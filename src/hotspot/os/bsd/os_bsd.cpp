@@ -231,6 +231,28 @@ jlong os::total_swap_space() {
     return -1;
   }
   return (jlong)vmusage.xsu_total;
+#elif defined(__FreeBSD__)
+  jlong page_size = sysconf(_SC_PAGESIZE);
+  if (page_size == -1) {
+    return -1;
+  }
+
+  struct xswdev xsw;
+  size_t mibsize, size;
+  jlong npages;
+  int mib[16], n;
+  mibsize = sizeof(mib) / sizeof(mib[0]);
+  if (sysctlnametomib("vm.swap_info", mib, &mibsize) == -1) {
+    return -1;
+  }
+  for (n = 0, npages = 0; ; n++) {
+    mib[mibsize] = n;
+    size = sizeof(xsw);
+    if (sysctl(mib, mibsize + 1, &xsw, &size, NULL, 0) == -1)
+      break;
+    npages += xsw.xsw_nblks;
+  }
+  return (npages * page_size);
 #else
   return -1;
 #endif
@@ -244,6 +266,28 @@ jlong os::free_swap_space() {
     return -1;
   }
   return (jlong)vmusage.xsu_avail;
+#elif defined(__FreeBSD__)
+  jlong page_size = sysconf(_SC_PAGESIZE);
+  if (page_size == -1) {
+    return -1;
+  }
+
+  struct xswdev xsw;
+  size_t mibsize, size;
+  jlong npages;
+  int mib[16], n;
+  mibsize = sizeof(mib) / sizeof(mib[0]);
+  if (sysctlnametomib("vm.swap_info", mib, &mibsize) == -1) {
+    return -1;
+  }
+  for (n = 0, npages = 0; ; n++) {
+    mib[mibsize] = n;
+    size = sizeof(xsw);
+    if (sysctl(mib, mibsize + 1, &xsw, &size, NULL, 0) == -1)
+      break;
+    npages += (xsw.xsw_nblks - xsw.xsw_used);
+  }
+  return (npages * page_size);
 #else
   return -1;
 #endif
