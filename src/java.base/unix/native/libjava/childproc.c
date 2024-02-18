@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,12 +85,7 @@ closeDescriptors(void)
 #if defined(_AIX)
   /* AIX does not understand '/proc/self' - it requires the real process ID */
   #define FD_DIR aix_fd_dir
-  #define DIR DIR64
-  #define dirent dirent64
-  #define opendir opendir64
-  #define readdir readdir64
-  #define closedir closedir64
-#elif defined(MACOSX)
+#elif defined(_ALLBSD_SOURCE)
   #define FD_DIR "/dev/fd"
 #else
   #define FD_DIR "/proc/self/fd"
