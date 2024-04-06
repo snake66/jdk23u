@@ -227,7 +227,7 @@ jlong os::total_swap_space() {
 #if defined(__APPLE__)
   struct xsw_usage vmusage;
   size_t size = sizeof(vmusage);
-  if (sysctlbyname("vm.swapusage", &vmusage, &size, NULL, 0) != 0) {
+  if (sysctlbyname("vm.swapusage", &vmusage, &size, nullptr, 0) != 0) {
     return -1;
   }
   return (jlong)vmusage.xsu_total;
@@ -262,7 +262,7 @@ jlong os::free_swap_space() {
 #if defined(__APPLE__)
   struct xsw_usage vmusage;
   size_t size = sizeof(vmusage);
-  if (sysctlbyname("vm.swapusage", &vmusage, &size, NULL, 0) != 0) {
+  if (sysctlbyname("vm.swapusage", &vmusage, &size, nullptr, 0) != 0) {
     return -1;
   }
   return (jlong)vmusage.xsu_avail;
@@ -629,17 +629,6 @@ void os::init_system_properties_values() {
 
 #undef SYS_EXT_DIR
 #undef EXTENSIONS_DIR
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// breakpoint support
-
-void os::breakpoint() {
-  BREAKPOINT;
-}
-
-extern "C" void breakpoint() {
-  // use debugger to set breakpoint here
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1828,14 +1817,28 @@ bool os::pd_commit_memory(char* addr, size_t size, bool exec) {
     // Do not replace MAP_JIT mappings, see JDK-8234930
     if (::mprotect(addr, size, prot) == 0) {
       return true;
+    } else {
+      ErrnoPreserver ep;
+      log_trace(os, map)("mprotect failed: " RANGEFMT " errno=(%s)",
+                         RANGEFMTARGS(addr, size),
+                         os::strerror(ep.saved_errno()));
     }
   } else {
     uintptr_t res = (uintptr_t) ::mmap(addr, size, prot,
                                        MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
     if (res != (uintptr_t) MAP_FAILED) {
       return true;
+    } else {
+      ErrnoPreserver ep;
+      log_trace(os, map)("mmap failed: " RANGEFMT " errno=(%s)",
+                         RANGEFMTARGS(addr, size),
+                         os::strerror(ep.saved_errno()));
     }
   }
+
+  // Warn about any commit errors we see in non-product builds just
+  // in case mmap() doesn't work as described on the man page.
+  NOT_PRODUCT(warn_fail_commit_memory(addr, size, exec, errno);)
 
   return false;
 }
@@ -1909,13 +1912,32 @@ bool os::numa_get_group_ids_for_range(const void** addresses, int* lgrp_ids, siz
 bool os::pd_uncommit_memory(char* addr, size_t size, bool exec) {
   if (exec) {
     if (::madvise(addr, size, MADV_FREE) != 0) {
+      ErrnoPreserver ep;
+      log_trace(os, map)("madvise failed: " RANGEFMT " errno=(%s)",
+                         RANGEFMTARGS(addr, size),
+                         os::strerror(ep.saved_errno()));
       return false;
     }
-    return ::mprotect(addr, size, PROT_NONE) == 0;
+    if (::mprotect(addr, size, PROT_NONE) == 0) {
+      return true;
+    } else {
+      ErrnoPreserver ep;
+      log_trace(os, map)("mprotect failed: " RANGEFMT " errno=(%s)",
+                         RANGEFMTARGS(addr, size),
+                         os::strerror(ep.saved_errno()));
+      return false;
+    }
   } else {
     uintptr_t res = (uintptr_t) ::mmap(addr, size, PROT_NONE,
         MAP_PRIVATE|MAP_FIXED|MAP_NORESERVE|MAP_ANONYMOUS, -1, 0);
-    return res  != (uintptr_t) MAP_FAILED;
+    if (res == (uintptr_t) MAP_FAILED) {
+      ErrnoPreserver ep;
+      log_trace(os, map)("mmap failed: " RANGEFMT " errno=(%s)",
+                         RANGEFMTARGS(addr, size),
+                         os::strerror(ep.saved_errno()));
+      return false;
+    }
+    return true;
   }
 }
 
@@ -1941,12 +1963,26 @@ static char* anon_mmap(char* requested_addr, size_t bytes, bool exec) {
   // touch an uncommitted page. Otherwise, the read/write might
   // succeed if we have enough swap space to back the physical page.
   char* addr = (char*)::mmap(requested_addr, bytes, PROT_NONE, flags, -1, 0);
-
-  return addr == MAP_FAILED ? nullptr : addr;
+  if (addr == MAP_FAILED) {
+    ErrnoPreserver ep;
+    log_trace(os, map)("mmap failed: " RANGEFMT " errno=(%s)",
+                       RANGEFMTARGS(requested_addr, bytes),
+                       os::strerror(ep.saved_errno()));
+    return nullptr;
+  }
+  return addr;
 }
 
 static int anon_munmap(char * addr, size_t size) {
-  return ::munmap(addr, size) == 0;
+  if (::munmap(addr, size) == 0) {
+    return 1;
+  } else {
+    ErrnoPreserver ep;
+    log_trace(os, map)("munmap failed: " RANGEFMT " errno=(%s)",
+                       RANGEFMTARGS(addr, size),
+                       os::strerror(ep.saved_errno()));
+    return 0;
+  }
 }
 
 char* os::pd_reserve_memory(size_t bytes, bool exec) {
