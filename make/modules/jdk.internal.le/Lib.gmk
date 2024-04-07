@@ -25,7 +25,7 @@
 
 include LibCommon.gmk
 
-ifeq ($(call isTargetOs, aix), false)
+ifeq ($(call isTargetOs, aix bsd), false)
   ##############################################################################
   ## Build lible
   ##############################################################################
