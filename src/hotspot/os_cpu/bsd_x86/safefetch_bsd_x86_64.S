@@ -45,6 +45,13 @@
     .private_extern SYMBOL(_SafeFetchN_fault)
     .private_extern SYMBOL(_SafeFetch32_continuation)
     .private_extern SYMBOL(_SafeFetchN_continuation)
+#else
+    .hidden SafeFetch32_impl
+    .hidden SafeFetchN_impl
+    .hidden _SafeFetch32_fault
+    .hidden _SafeFetchN_fault
+    .hidden _SafeFetch32_continuation
+    .hidden _SafeFetchN_continuation
 #endif
 
     .text

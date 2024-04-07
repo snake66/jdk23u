@@ -46,6 +46,13 @@
     .private_extern SYMBOL(SafeFetch32_impl)
     .private_extern SYMBOL(_SafeFetch32_fault)
     .private_extern SYMBOL(_SafeFetch32_continuation)
+#else
+    .hidden SafeFetchN_impl
+    .hidden _SafeFetchN_fault
+    .hidden _SafeFetchN_continuation
+    .hidden SafeFetch32_impl
+    .hidden _SafeFetch32_fault
+    .hidden _SafeFetch32_continuation
 #endif
 
     # Support for int SafeFetch32(int* address, int defaultval);

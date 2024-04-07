@@ -54,6 +54,16 @@
         .private_extern SYMBOL(_Copy_conjoint_jints_atomic)
         .private_extern SYMBOL(_Copy_arrayof_conjoint_jlongs)
         .private_extern SYMBOL(_Copy_conjoint_jlongs_atomic)
+#else
+        .hidden SpinPause
+
+        .hidden _Copy_arrayof_conjoint_bytes
+        .hidden _Copy_arrayof_conjoint_jshorts
+        .hidden _Copy_conjoint_jshorts_atomic
+        .hidden _Copy_arrayof_conjoint_jints
+        .hidden _Copy_conjoint_jints_atomic
+        .hidden _Copy_arrayof_conjoint_jlongs
+        .hidden _Copy_conjoint_jlongs_atomic
 #endif
 
         .text

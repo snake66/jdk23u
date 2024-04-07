@@ -63,6 +63,20 @@
         .private_extern SYMBOL(_mmx_Copy_arrayof_conjoint_jshorts)
         .private_extern SYMBOL(_Atomic_cmpxchg_long)
         .private_extern SYMBOL(_Atomic_move_long)
+#else
+        .hidden fixcw
+        .hidden SpinPause
+
+        .hidden _Copy_arrayof_conjoint_bytes
+        .hidden _Copy_conjoint_jshorts_atomic
+        .hidden _Copy_arrayof_conjoint_jshorts
+        .hidden _Copy_conjoint_jints_atomic
+        .hidden _Copy_arrayof_conjoint_jints
+        .hidden _Copy_conjoint_jlongs_atomic
+        .hidden _mmx_Copy_arrayof_conjoint_jshorts
+
+        .hidden _Atomic_cmpxchg_long
+        .hidden _Atomic_move_long
 #endif
 
         .text
