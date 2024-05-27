@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,11 @@
 //
 // Declare Bsd specific flags. They are not available on other platforms.
 //
+<<<<<<< HEAD
 #define RUNTIME_OS_FLAGS(develop,     \
                          develop_pd,  \
                          product,     \
                          product_pd,  \
-                         notproduct,  \
                          range,       \
                          constraint)  \
                                                     \
