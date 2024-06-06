@@ -28,7 +28,6 @@
 //
 // Declare Bsd specific flags. They are not available on other platforms.
 //
-<<<<<<< HEAD
 #define RUNTIME_OS_FLAGS(develop,     \
                          develop_pd,  \
                          product,     \
