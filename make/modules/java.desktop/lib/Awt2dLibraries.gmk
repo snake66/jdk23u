@@ -194,7 +194,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       libpipewire/include \
       #
 
-  ifeq ($(call isTargetOs, linux), true)
+  ifeq ($(call isTargetOs, linux bsd), true)
     ifeq ($(DISABLE_XRENDER), true)
       LIBAWT_XAWT_CFLAGS += -DDISABLE_XRENDER_BY_DEFAULT=true
     endif
@@ -256,6 +256,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       LIBS_unix := $(LIBDL) $(LIBM) $(X_LIBS) -lX11 -lXext -lXi -lXrender \
           -lXtst, \
       LIBS_linux := -lpthread, \
+      LIBS_bsd := -pthread, \
       STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_XAWT_STATIC_EXCLUDE_OBJS), \
   ))
 
@@ -590,7 +591,7 @@ ifeq ($(call isTargetOs, macosx), true)
   LIBJAWT_EXCLUDE_SRC_PATTERNS := /unix/
 endif
 
-ifeq ($(call isTargetOs, linux)+$(ENABLE_HEADLESS_ONLY), true+true)
+ifeq ($(call isTargetOs, linux bsd)+$(ENABLE_HEADLESS_ONLY), true+true)
   LIBJAWT_CFLAGS += -DHEADLESS
 endif
 
@@ -691,7 +692,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
   LIBSPLASHSCREEN_CFLAGS += -DSPLASHSCREEN -DPNG_NO_MMX_CODE \
       -DPNG_ARM_NEON_OPT=0 -DPNG_ARM_NEON_IMPLEMENTATION=0
 
-  ifeq ($(call isTargetOs, linux)+$(call isTargetCpuArch, ppc), true+true)
+  ifeq ($(call isTargetOs, linux bsd)+$(call isTargetCpuArch, ppc), true+true)
     LIBSPLASHSCREEN_CFLAGS += -DPNG_POWERPC_VSX_OPT=0
   endif
 
