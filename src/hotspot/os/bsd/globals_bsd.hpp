@@ -40,7 +40,7 @@
                                                     \
   product(bool, UseSHM, false,                      \
           "Use SYSV shared memory for large pages") \
-  AARCH64_ONLY(develop(bool, AssertWXAtThreadSync, false,               \
+  AARCH64_ONLY(develop(bool, AssertWXAtThreadSync, true,               \
           "Conservatively check W^X thread state at possible safepoint" \
           "or handshake"))
 
