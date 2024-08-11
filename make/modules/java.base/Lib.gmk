@@ -156,9 +156,11 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBSYSLOOKUP, \
     NAME := syslookup, \
     LD_SET_ORIGIN := false, \
     LDFLAGS_linux := -Wl$(COMMA)--no-as-needed, \
+    LDFLAGS_bsd := -Wl$(COMMA)--no-as-needed, \
     LDFLAGS_aix := -brtl -bexpfull, \
     LIBS_linux := $(LIBDL) $(LIBM), \
     LIBS_aix := -ldecNumber $(LIBM), \
+    LIBS_bsd := $(LIBDL) $(LIBM), \
 ))
 
 TARGETS += $(BUILD_LIBSYSLOOKUP)
