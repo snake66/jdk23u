@@ -62,8 +62,6 @@ ifeq ($(USE_EXTERNAL_LCMS), true)
   # If we're using an external library, we can't include our own SRC path
   # as includes, instead the system headers should be used.
   LIBLCMS_HEADERS_FROM_SRC := false
-  # FIXME: Keep old behavior and reset LCMS_CFLAGS. This is likely a bug.
-  LCMS_CFLAGS :=
 endif
 
 ifeq ($(TOOLCHAIN_TYPE)+$(TOOLCHAIN_VERSION), clang+10.1)
@@ -117,6 +115,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJAVAJPEG, \
     NAME := javajpeg, \
     INCLUDE_FILES := $(LIBJAVAJPEG_INCLUDE_FILES), \
     OPTIMIZATION := HIGHEST, \
+    CFLAGS := $(LIBJPEG_CFLAGS), \
     HEADERS_FROM_SRC := $(LIBJAVAJPEG_HEADERS_FROM_SRC), \
     DISABLED_WARNINGS_gcc_imageioJPEG.c := clobbered array-bounds, \
     DISABLED_WARNINGS_gcc_jcmaster.c := implicit-fallthrough, \
@@ -284,6 +283,7 @@ endif
 ifeq ($(USE_EXTERNAL_HARFBUZZ), true)
    LIBFONTMANAGER_EXTRA_SRC =
    LIBFONTMANAGER_LIBS += $(HARFBUZZ_LIBS)
+   LIBFONTMANAGER_CFLAGS += $(HARFBUZZ_CFLAGS)
 else
    LIBFONTMANAGER_EXTRA_SRC = libharfbuzz
 
