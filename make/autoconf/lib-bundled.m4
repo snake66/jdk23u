@@ -64,13 +64,11 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBJPEG],
     USE_EXTERNAL_LIBJPEG=false
     LIBJPEG_CFLAGS=""
     LIBJPEG_LIBS=""
-    AC_MSG_RESULT([bundled])
   elif test "x${with_libjpeg}" = "xsystem"; then
-    AC_MSG_RESULT([system])
-    PKG_CHECK_MODULES(JPEG, libjpeg, [LIBJPEG_FOUND=yes], [LIBJPEG_FOUND=no])
+    PKG_CHECK_MODULES(LIBJPEG, libjpeg, [LIBJPEG_FOUND=yes], [LIBJPEG_FOUND=no])
     if test "x${LIBJPEG_FOUND}" = "xyes"; then
       # PKG_CHECK_MODULES will set LIBJPEG_CFLAGS and LIBJPEG_LIBS
-      USE_EXTERNAL_LCMS=true
+      USE_EXTERNAL_LIBJPEG=true
     else
       AC_MSG_ERROR([--with-libjpeg=system specified, but no libjpeg found!])
     fi
